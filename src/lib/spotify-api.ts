@@ -55,7 +55,7 @@ const recentlyPlayedResponseSchema = z.object({
     played_at: z.iso.datetime(),
     context: z.object({ uri: z.string() }).nullable().optional(),
   })),
-  cursors: z.object({ after: z.string().nullable().optional() }).optional(),
+  cursors: z.object({ after: z.string().nullable().optional() }).nullable().optional(),
 });
 
 const savedTracksResponseSchema = z.object({

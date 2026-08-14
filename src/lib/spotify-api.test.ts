@@ -73,6 +73,19 @@ describe("SpotifyApiClient", () => {
     expect(url).toContain("after=1710000000000");
   });
 
+  it("accepts an empty recent-play response with null cursors", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(Response.json({
+      items: [],
+      cursors: null,
+    }));
+    const client = new SpotifyApiClient("access-token", fetcher);
+
+    await expect(client.getRecentlyPlayed()).resolves.toMatchObject({
+      items: [],
+      cursors: null,
+    });
+  });
+
   it("requests saved tracks in pages of fifty", async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(Response.json({
       items: [],
