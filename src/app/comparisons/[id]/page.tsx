@@ -42,7 +42,7 @@ export default async function ComparisonPage({
   const details = result?.resultJson as unknown as CompatibilityResultJson | undefined;
 
   return (
-    <main className="min-h-screen px-6 py-6 sm:px-10 lg:px-16">
+    <main className="px-6 pt-6 sm:px-10 lg:px-16">
       <AppHeader userId={session.user.id} userImage={session.user.image} userName={session.user.name} />
 
       <section className="mx-auto max-w-5xl py-20">
@@ -146,9 +146,9 @@ export default async function ComparisonPage({
                         <h3 className="text-lg font-medium">{sender} → {recipient}</h3>
                         <ol className="mt-4 space-y-3">
                           {direction.items.map((track) => (
-                            <li className="rounded-2xl border border-white/10 bg-white/[0.025] p-4" key={track.id}>
+                            <li className="rounded border border-white/10 bg-white/[0.025] p-4" key={track.id}>
                               <div className="flex items-center gap-4">
-                                {track.albumImageUrl ? <Image alt="" className="h-14 w-14 rounded-xl object-cover" height={56} src={track.albumImageUrl} width={56} /> : null}
+                                {track.albumImageUrl ? <Image alt="" className="h-14 w-14 rounded object-cover" height={56} src={track.albumImageUrl} width={56} /> : null}
                                 <div className="min-w-0 flex-1">
                                   <p className="truncate font-medium">{track.name}</p>
                                   <p className="truncate text-xs text-white/35">{track.albumName}</p>
@@ -187,11 +187,11 @@ function SharedList({
       {items.length ? (
         <ul className="mt-5 space-y-2">
           {items.map((item) => (
-            <li className="flex items-center gap-4 rounded-2xl bg-white/[0.035] p-3" key={item.id}>
+            <li className={`flex items-center gap-4 bg-white/[0.035] p-3 ${round ? "rounded-full" : "rounded"}`} key={item.id}>
               {item.imageUrl ? (
-                <Image alt="" className={`h-12 w-12 object-cover ${round ? "rounded-full" : "rounded-xl"}`} height={48} src={item.imageUrl} width={48} />
+                <Image alt="" className={`h-12 w-12 object-cover ${round ? "rounded-full" : "rounded"}`} height={48} src={item.imageUrl} width={48} />
               ) : (
-                <span className={`flex h-12 w-12 items-center justify-center bg-white/10 ${round ? "rounded-full" : "rounded-xl"}`}>{item.name.slice(0, 1)}</span>
+                <span className={`flex h-12 w-12 items-center justify-center bg-white/10 ${round ? "rounded-full" : "rounded"}`}>{item.name.slice(0, 1)}</span>
               )}
               <div className="min-w-0">
                 <p className="truncate font-medium">{item.name}</p>
