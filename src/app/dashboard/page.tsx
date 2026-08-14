@@ -40,12 +40,12 @@ export default async function DashboardPage({
       include: {
         topArtists: {
           orderBy: { rank: "asc" },
-          take: 12,
+          take: 50,
           include: { artist: true },
         },
         topTracks: {
           orderBy: { rank: "asc" },
-          take: 12,
+          take: 50,
           include: { track: { include: { artists: { include: { artist: true }, orderBy: { position: "asc" } } } } },
         },
       },

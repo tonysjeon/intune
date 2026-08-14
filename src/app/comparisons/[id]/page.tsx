@@ -36,7 +36,8 @@ export default async function ComparisonPage({
   const profilesReady = comparison.status !== ComparisonStatus.PENDING;
   const canAnalyze =
     comparison.status === ComparisonStatus.READY ||
-    comparison.status === ComparisonStatus.FAILED;
+    comparison.status === ComparisonStatus.FAILED ||
+    comparison.status === ComparisonStatus.COMPLETED;
   const result = comparison.results[0];
   const details = result?.resultJson as unknown as CompatibilityResultJson | undefined;
 
@@ -94,12 +95,12 @@ export default async function ComparisonPage({
 
         {canAnalyze ? (
           <div className="mt-16 rounded-3xl border border-lime-300/20 bg-lime-300/[0.05] p-8">
-            <h2 className="text-2xl font-medium">Your compatibility is ready to calculate</h2>
+            <h2 className="text-2xl font-medium">{result ? "Refresh your compatibility" : "Your compatibility is ready to calculate"}</h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-white/50">
               Compare ranked artists and tracks across three time ranges, plus the genres
               that connect your listening profiles.
             </p>
-            <div className="mt-6"><AnalyzeButton comparisonId={comparison.id} /></div>
+            <div className="mt-6"><AnalyzeButton comparisonId={comparison.id} hasResult={Boolean(result)} /></div>
           </div>
         ) : null}
 
@@ -138,6 +139,39 @@ export default async function ComparisonPage({
               <SharedList title="Shared artists" items={details.sharedArtists.map((artist) => ({ id: artist.id, name: artist.name, subtitle: "Artist", imageUrl: artist.imageUrl }))} round />
               <SharedList title="Shared tracks" items={details.sharedTracks.map((track) => ({ id: track.id, name: track.name, subtitle: track.albumName, imageUrl: track.albumImageUrl }))} />
             </div>
+
+            {(details.recommendations ?? []).length ? (
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-lime-300">Pass the aux</p>
+                <h2 className="mt-3 text-3xl font-medium">What to send each other</h2>
+                <div className="mt-7 grid gap-10 lg:grid-cols-2">
+                  {details.recommendations.map((direction) => {
+                    const sender = comparison.members.find(({ user }) => user.id === direction.fromUserId)?.user.name ?? "Listener";
+                    const recipient = comparison.members.find(({ user }) => user.id === direction.toUserId)?.user.name ?? "friend";
+                    return (
+                      <div key={`${direction.fromUserId}:${direction.toUserId}`}>
+                        <h3 className="text-lg font-medium">{sender} → {recipient}</h3>
+                        <ol className="mt-4 space-y-3">
+                          {direction.items.map((track) => (
+                            <li className="rounded-2xl border border-white/10 bg-white/[0.025] p-4" key={track.id}>
+                              <div className="flex items-center gap-4">
+                                {track.albumImageUrl ? <Image alt="" className="h-14 w-14 rounded-xl object-cover" height={56} src={track.albumImageUrl} width={56} /> : null}
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate font-medium">{track.name}</p>
+                                  <p className="truncate text-xs text-white/35">{track.albumName}</p>
+                                </div>
+                                <span className="text-sm font-medium text-lime-300">{track.score}%</span>
+                              </div>
+                              <p className="mt-3 text-xs leading-5 text-white/40">{track.reasons.join(" · ")}</p>
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
           </section>
         ) : null}
       </section>

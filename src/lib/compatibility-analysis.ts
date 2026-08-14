@@ -10,6 +10,7 @@ import {
   type CompatibilityProfile,
 } from "@/lib/compatibility-scoring";
 import { db } from "@/lib/db";
+import { rankRecommendations } from "@/lib/mutual-recommendations";
 
 export interface SharedArtistResult {
   id: string;
@@ -29,7 +30,19 @@ export interface CompatibilityResultJson {
   trackByRange: Record<ListeningTimeRange, number>;
   sharedArtists: SharedArtistResult[];
   sharedTracks: SharedTrackResult[];
+  recommendations: DirectionalRecommendations[];
   unavailableComponents: ["taste_vector", "discovery"];
+}
+
+export interface RecommendationResult extends SharedTrackResult {
+  score: number;
+  reasons: string[];
+}
+
+export interface DirectionalRecommendations {
+  fromUserId: string;
+  toUserId: string;
+  items: RecommendationResult[];
 }
 
 export class ComparisonAnalysisError extends Error {
@@ -42,7 +55,11 @@ export class ComparisonAnalysisError extends Error {
 type SnapshotWithItems = Prisma.ListeningSnapshotGetPayload<{
   include: {
     topArtists: { include: { artist: true } };
-    topTracks: { include: { track: true } };
+    topTracks: {
+      include: {
+        track: { include: { artists: { include: { artist: true } } } };
+      };
+    };
   };
 }>;
 
@@ -132,6 +149,48 @@ function sharedItems(
   return { sharedArtists, sharedTracks };
 }
 
+function directionalRecommendations(
+  snapshots: Map<string, SnapshotWithItems>,
+  fromUserId: string,
+  toUserId: string,
+): DirectionalRecommendations {
+  const sender = snapshots.get(`${fromUserId}:${ListeningTimeRange.MEDIUM_TERM}`)!;
+  const recipient = snapshots.get(`${toUserId}:${ListeningTimeRange.MEDIUM_TERM}`)!;
+  const tracksById = new Map(sender.topTracks.map(({ track }) => [track.id, track]));
+  const ranked = rankRecommendations(
+    sender.topTracks.map(({ track, rank }) => ({
+      id: track.id,
+      rank,
+      artists: track.artists.map(({ artist }) => ({
+        id: artist.id,
+        genres: artist.genres,
+      })),
+    })),
+    new Set(recipient.topTracks.map(({ trackId }) => trackId)),
+    recipient.topArtists.map(({ artist, rank }) => ({
+      id: artist.id,
+      rank,
+      genres: artist.genres,
+    })),
+  );
+
+  return {
+    fromUserId,
+    toUserId,
+    items: ranked.map(({ trackId, score, reasons }) => {
+      const track = tracksById.get(trackId)!;
+      return {
+        id: track.id,
+        name: track.name,
+        albumName: track.albumName,
+        albumImageUrl: track.albumImageUrl,
+        score,
+        reasons,
+      };
+    }),
+  };
+}
+
 export async function analyzeComparison(comparisonId: string, userId: string) {
   const comparison = await db.comparison.findFirst({
     where: { id: comparisonId, members: { some: { userId } } },
@@ -161,7 +220,16 @@ export async function analyzeComparison(comparisonId: string, userId: string) {
       orderBy: { capturedAt: "desc" },
       include: {
         topArtists: { include: { artist: true }, orderBy: { rank: "asc" } },
-        topTracks: { include: { track: true }, orderBy: { rank: "asc" } },
+        topTracks: {
+          include: {
+            track: {
+              include: {
+                artists: { include: { artist: true }, orderBy: { position: "asc" } },
+              },
+            },
+          },
+          orderBy: { rank: "asc" },
+        },
       },
     });
     const latest = latestSnapshots(snapshots);
@@ -174,6 +242,10 @@ export async function analyzeComparison(comparisonId: string, userId: string) {
       artistByRange: scores.artistByRange,
       trackByRange: scores.trackByRange,
       ...shared,
+      recommendations: [
+        directionalRecommendations(latest, userIds[0], userIds[1]),
+        directionalRecommendations(latest, userIds[1], userIds[0]),
+      ],
       unavailableComponents: ["taste_vector", "discovery"],
     };
 

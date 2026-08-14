@@ -4,7 +4,13 @@ import { useActionState } from "react";
 
 import { analyzeComparisonAction } from "@/app/actions/comparisons";
 
-export function AnalyzeButton({ comparisonId }: { comparisonId: string }) {
+export function AnalyzeButton({
+  comparisonId,
+  hasResult = false,
+}: {
+  comparisonId: string;
+  hasResult?: boolean;
+}) {
   const action = analyzeComparisonAction.bind(null, comparisonId);
   const [state, formAction, pending] = useActionState(action, { error: "" });
 
@@ -15,7 +21,7 @@ export function AnalyzeButton({ comparisonId }: { comparisonId: string }) {
         disabled={pending}
         type="submit"
       >
-        {pending ? "Analyzing…" : "Analyze compatibility"}
+        {pending ? "Analyzing…" : hasResult ? "Refresh analysis" : "Analyze compatibility"}
       </button>
       {state.error ? <p className="mt-3 text-sm text-red-300">{state.error}</p> : null}
     </form>
