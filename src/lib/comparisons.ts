@@ -79,6 +79,10 @@ export async function getComparisonForMember(comparisonId: string, userId: strin
           user: { select: { id: true, name: true, image: true } },
         },
       },
+      results: {
+        orderBy: { generatedAt: "desc" },
+        take: 1,
+      },
     },
   });
 }
