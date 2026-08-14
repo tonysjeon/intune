@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { auth, signIn } from "@/auth";
 import { db } from "@/lib/db";
 import { syncSpotifyListeningData } from "@/lib/listening-sync";
-import { SpotifyReauthorizationError } from "@/lib/spotify";
+import { SPOTIFY_SCOPES, SpotifyReauthorizationError } from "@/lib/spotify";
 import { SpotifyApiError } from "@/lib/spotify-api";
 
 export interface ListeningSyncState {
@@ -14,7 +14,11 @@ export interface ListeningSyncState {
 }
 
 export async function connectSpotify() {
-  await signIn("spotify", { redirectTo: "/dashboard" });
+  await signIn(
+    "spotify",
+    { redirectTo: "/dashboard" },
+    { scope: SPOTIFY_SCOPES.join(" "), show_dialog: "true" },
+  );
 }
 
 export async function disconnectSpotify() {
@@ -30,6 +34,7 @@ export async function disconnectSpotify() {
 
   revalidatePath("/");
   revalidatePath("/dashboard");
+  revalidatePath("/calendar");
 }
 
 export async function syncListeningData(

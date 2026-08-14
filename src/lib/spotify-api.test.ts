@@ -57,4 +57,35 @@ describe("SpotifyApiClient", () => {
 
     await expect(client.getTopArtists("medium_term")).rejects.toThrow();
   });
+
+  it("requests fifty recent plays after the stored cursor", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(Response.json({
+      items: [],
+      cursors: { after: "1720000000000" },
+    }));
+    const client = new SpotifyApiClient("access-token", fetcher);
+
+    await client.getRecentlyPlayed(1710000000000);
+
+    const url = String(fetcher.mock.calls[0]?.[0]);
+    expect(url).toContain("recently-played");
+    expect(url).toContain("limit=50");
+    expect(url).toContain("after=1710000000000");
+  });
+
+  it("requests saved tracks in pages of fifty", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(Response.json({
+      items: [],
+      next: null,
+      total: 0,
+    }));
+    const client = new SpotifyApiClient("access-token", fetcher);
+
+    await client.getSavedTracksPage(50);
+
+    const url = String(fetcher.mock.calls[0]?.[0]);
+    expect(url).toContain("/v1/me/tracks");
+    expect(url).toContain("limit=50");
+    expect(url).toContain("offset=50");
+  });
 });

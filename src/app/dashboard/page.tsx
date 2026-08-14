@@ -3,19 +3,24 @@ import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { connectSpotify, disconnectSpotify } from "@/app/actions/auth";
+import { connectSpotify } from "@/app/actions/auth";
+import { AppHeader } from "@/app/app-header";
 import { auth } from "@/auth";
+import { RotationToggle } from "@/app/dashboard/rotation-toggle";
 import { SyncButton } from "@/app/dashboard/sync-button";
-import { CreateComparisonForm } from "@/app/dashboard/create-comparison-form";
+import { TimeRangeDropdown } from "@/app/dashboard/time-range-dropdown";
+import { calculateBehavioralInsights, formatHour } from "@/lib/behavioral-insights";
 import { db } from "@/lib/db";
+import { formatRelativeTime } from "@/lib/relative-time";
 
 const timeRanges = {
-  short: { label: "4 weeks", value: ListeningTimeRange.SHORT_TERM },
+  short: { label: "1 month", value: ListeningTimeRange.SHORT_TERM },
   medium: { label: "6 months", value: ListeningTimeRange.MEDIUM_TERM },
   long: { label: "All time", value: ListeningTimeRange.LONG_TERM },
 } as const;
 
 type RangeKey = keyof typeof timeRanges;
+type RotationView = "artists" | "tracks";
 
 export default async function DashboardPage({
   searchParams,
@@ -29,7 +34,8 @@ export default async function DashboardPage({
   const query = await searchParams;
   const requestedRange = typeof query.range === "string" ? query.range : "medium";
   const range: RangeKey = requestedRange in timeRanges ? (requestedRange as RangeKey) : "medium";
-  const [spotifyAccount, snapshot, latestSync, comparisons] = await Promise.all([
+  const view: RotationView = query.view === "tracks" ? "tracks" : "artists";
+  const [spotifyAccount, snapshot, latestSync, recentPlays, savedTrackCount] = await Promise.all([
     db.account.findFirst({
       where: { userId: session.user.id, provider: "spotify" },
       select: { scope: true, updatedAt: true },
@@ -55,27 +61,34 @@ export default async function DashboardPage({
       orderBy: { startedAt: "desc" },
       select: { status: true, completedAt: true },
     }),
-    db.comparison.findMany({
-      where: { members: { some: { userId: session.user.id } } },
-      orderBy: { createdAt: "desc" },
-      take: 6,
+    db.recentPlay.findMany({
+      where: { userId: session.user.id },
+      orderBy: { playedAt: "desc" },
+      take: 50,
       include: {
-        members: {
-          orderBy: { joinedAt: "asc" },
-          select: { user: { select: { id: true, name: true } } },
+        track: {
+          include: {
+            artists: { include: { artist: true }, orderBy: { position: "asc" } },
+          },
         },
       },
     }),
+    db.savedTrack.count({ where: { userId: session.user.id } }),
   ]);
+  const grantedScopes = new Set(spotifyAccount?.scope?.split(" ") ?? []);
+  const behavioralAccess =
+    grantedScopes.has("user-read-recently-played") &&
+    grantedScopes.has("user-library-read");
+  const behavioralInsights = calculateBehavioralInsights(
+    recentPlays.map(({ trackId, playedAt }) => ({ trackId, playedAt })),
+  );
+  const repeatedTrack = recentPlays.find(
+    ({ trackId }) => trackId === behavioralInsights.mostRepeatedTrackId,
+  )?.track;
 
   return (
     <main className="min-h-screen px-6 py-6 sm:px-10 lg:px-16">
-      <nav className="mx-auto flex max-w-6xl items-center justify-between border-b border-white/10 pb-5">
-        <Link className="text-xl font-semibold tracking-tight" href="/">
-          in<span className="text-lime-300">tune</span>
-        </Link>
-        <span className="text-sm text-white/45">{session.user.name}</span>
-      </nav>
+      <AppHeader userId={session.user.id} userImage={session.user.image} userName={session.user.name} />
 
       <section className="mx-auto max-w-6xl py-16">
         <div className="flex flex-col justify-between gap-8 sm:flex-row sm:items-end">
@@ -86,121 +99,98 @@ export default async function DashboardPage({
             <h1 className="mt-5 text-5xl font-semibold tracking-[-0.05em] sm:text-6xl">
               Welcome, {session.user.name?.split(" ")[0] ?? "listener"}
             </h1>
+          </div>
+          <div className="flex flex-wrap items-center gap-4 pb-1">
             {latestSync?.completedAt ? (
-              <p className="mt-4 text-sm text-white/35">
-                Last synced {latestSync.completedAt.toLocaleString()}
+              <p className="text-xs text-white/35">
+                Last synced {formatRelativeTime(latestSync.completedAt)}
               </p>
             ) : null}
+            {spotifyAccount ? (
+              behavioralAccess ? <SyncButton /> : (
+                <form action={connectSpotify}>
+                  <button className="rounded-full bg-lime-300 px-5 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-lime-200" type="submit">
+                    Enable listening history
+                  </button>
+                </form>
+              )
+            ) : (
+              <form action={connectSpotify}>
+                <button className="rounded-full bg-lime-300 px-5 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-lime-200" type="submit">
+                  Connect Spotify
+                </button>
+              </form>
+            )}
           </div>
-          {spotifyAccount ? <SyncButton /> : null}
         </div>
-
-        <article className="mt-12 grid gap-8 rounded-3xl border border-white/10 bg-white/[0.035] p-7 sm:grid-cols-[1fr_auto] sm:items-center sm:p-9">
-          <div>
-            <div className="flex items-center gap-3">
-              <span
-                className={`h-2.5 w-2.5 rounded-full ${spotifyAccount ? "bg-lime-300" : "bg-white/25"}`}
-              />
-              <h2 className="text-xl font-medium">
-                Spotify {spotifyAccount ? "connected" : "disconnected"}
-              </h2>
-            </div>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-white/45">
-              {spotifyAccount
-                ? "InTune can read your profile and top items. Your encrypted authorization can be revoked here at any time."
-                : "Reconnect Spotify to continue building your listening profile and join comparisons."}
-            </p>
-          </div>
-
-          {spotifyAccount ? (
-            <form action={disconnectSpotify}>
-              <button
-                className="rounded-full border border-white/15 px-5 py-3 text-sm font-medium text-white/70 transition hover:border-white/30 hover:text-white"
-                type="submit"
-              >
-                Disconnect
-              </button>
-            </form>
-          ) : (
-            <form action={connectSpotify}>
-              <button
-                className="rounded-full bg-lime-300 px-5 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-lime-200"
-                type="submit"
-              >
-                Reconnect Spotify
-              </button>
-            </form>
-          )}
-        </article>
 
         {snapshot ? (
           <section className="mt-16">
-            <div className="flex flex-col justify-between gap-6 border-b border-white/10 pb-5 sm:flex-row sm:items-center">
-              <h2 className="text-3xl font-medium tracking-tight">Your rotation</h2>
-              <div className="flex gap-2" aria-label="Listening time range">
-                {Object.entries(timeRanges).map(([key, option]) => (
-                  <Link
-                    className={`rounded-full px-4 py-2 text-xs transition ${range === key ? "bg-white text-neutral-950" : "bg-white/[0.05] text-white/50 hover:text-white"}`}
-                    href={`/dashboard?range=${key}`}
-                    key={key}
-                  >
-                    {option.label}
-                  </Link>
-                ))}
+            <div className="border-b border-white/10 pb-6">
+              <div className="grid items-center gap-5 lg:grid-cols-[1fr_auto_1fr]">
+                <h2 className="text-3xl font-medium tracking-tight">Your rotation</h2>
+                <RotationToggle key={view} range={range} view={view} />
+                <TimeRangeDropdown range={range} view={view} />
               </div>
             </div>
 
-            <div className="grid gap-12 py-10 lg:grid-cols-2">
-              <div>
-                <p className="mb-5 text-xs uppercase tracking-[0.2em] text-white/35">Top artists</p>
-                <ol className="space-y-2">
+            <div className="py-10" key={`${view}-${range}`}>
+              {view === "artists" ? (
+                <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {snapshot.topArtists.map(({ artist, rank }) => (
-                    <li className="flex items-center gap-4 rounded-2xl bg-white/[0.035] px-4 py-3" key={artist.id}>
-                      <span className="w-6 text-sm text-white/25">{rank}</span>
+                    <li
+                      className="rotation-card-enter flex min-w-0 items-center gap-4 rounded-2xl bg-white/[0.035] py-3 pl-6 pr-4"
+                      key={artist.id}
+                      style={{ animationDelay: `${Math.floor((rank - 1) / 3) * 24}ms` }}
+                    >
+                      <span className="rotation-content-enter w-6 shrink-0 translate-x-1.5 text-sm text-white/35">{rank}</span>
                       {artist.imageUrl ? (
                         <Image
                           alt=""
-                          className="h-10 w-10 rounded-full object-cover"
+                          className="rotation-content-enter h-10 w-10 shrink-0 rounded-full object-cover"
                           height={40}
                           src={artist.imageUrl}
                           width={40}
                         />
                       ) : (
-                        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-400/20 text-sm text-violet-200">
+                        <span className="rotation-content-enter flex h-10 w-10 items-center justify-center rounded-full bg-violet-400/20 text-sm text-violet-200">
                           {artist.name.slice(0, 1)}
                         </span>
                       )}
-                      <div className="min-w-0">
+                      <div className="rotation-content-enter min-w-0">
                         <p className="truncate font-medium">{artist.name}</p>
-                        <p className="truncate text-xs text-white/35">
-                          {artist.genres.slice(0, 2).join(" · ") || "Artist"}
-                        </p>
+                        {artist.genres.length ? (
+                          <p className="truncate text-xs text-white/35">
+                            {artist.genres.slice(0, 2).join(" · ")}
+                          </p>
+                        ) : null}
                       </div>
                     </li>
                   ))}
                 </ol>
-              </div>
-
-              <div>
-                <p className="mb-5 text-xs uppercase tracking-[0.2em] text-white/35">Top tracks</p>
-                <ol className="space-y-2">
+              ) : (
+                <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {snapshot.topTracks.map(({ track, rank }) => (
-                    <li className="flex items-center gap-4 rounded-2xl bg-white/[0.035] px-4 py-3" key={track.id}>
-                      <span className="w-6 text-sm text-white/25">{rank}</span>
+                    <li
+                      className="rotation-card-enter flex min-w-0 items-center gap-4 rounded-2xl bg-white/[0.035] py-3 pl-6 pr-4"
+                      key={track.id}
+                      style={{ animationDelay: `${Math.floor((rank - 1) / 3) * 24}ms` }}
+                    >
+                      <span className="rotation-content-enter w-6 shrink-0 translate-x-1.5 text-sm text-white/35">{rank}</span>
                       {track.albumImageUrl ? (
                         <Image
                           alt=""
-                          className="h-10 w-10 rounded-xl object-cover"
+                          className="rotation-content-enter h-10 w-10 shrink-0 rounded-xl object-cover"
                           height={40}
                           src={track.albumImageUrl}
                           width={40}
                         />
                       ) : (
-                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-lime-300/15 text-sm text-lime-200">
+                        <span className="rotation-content-enter flex h-10 w-10 items-center justify-center rounded-xl bg-lime-300/15 text-sm text-lime-200">
                           {track.name.slice(0, 1)}
                         </span>
                       )}
-                      <div className="min-w-0">
+                      <div className="rotation-content-enter min-w-0">
                         <p className="truncate font-medium">{track.name}</p>
                         <p className="truncate text-xs text-white/35">
                           {track.artists.map(({ artist }) => artist.name).join(", ")}
@@ -209,7 +199,7 @@ export default async function DashboardPage({
                     </li>
                   ))}
                 </ol>
-              </div>
+              )}
             </div>
           </section>
         ) : spotifyAccount ? (
@@ -221,45 +211,71 @@ export default async function DashboardPage({
           </section>
         ) : null}
 
-        {snapshot ? (
+        {behavioralAccess ? (
           <section className="mt-16 border-t border-white/10 pt-12">
-            <p className="text-xs uppercase tracking-[0.2em] text-white/35">
-              Taste match
-            </p>
-            <h2 className="mt-4 text-3xl font-medium tracking-tight">
-              Compare with a friend
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-white/45">
-              Create a private invitation. Your friend connects their own Spotify
-              account and chooses whether to share their taste data.
-            </p>
-            <CreateComparisonForm />
-
-            {comparisons.length ? (
-              <div className="mt-10 grid gap-3 sm:grid-cols-2">
-                {comparisons.map((comparison) => {
-                  const otherMember = comparison.members.find(
-                    ({ user }) => user.id !== session.user.id,
-                  );
-                  return (
-                    <Link
-                      className="rounded-2xl border border-white/10 bg-white/[0.025] p-5 transition hover:bg-white/[0.05]"
-                      href={`/comparisons/${comparison.id}`}
-                      key={comparison.id}
-                    >
-                      <p className="text-sm font-medium">
-                        {otherMember?.user.name ?? "Waiting for a friend"}
-                      </p>
-                      <p className="mt-2 text-xs uppercase tracking-[0.16em] text-white/30">
-                        {comparison.status.toLowerCase()}
-                      </p>
-                    </Link>
-                  );
-                })}
+            <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-lime-300">Behavioral listening</p>
+                <h2 className="mt-4 text-3xl font-medium tracking-tight">What you actually played</h2>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-white/45">
+                  Timestamped recent plays reveal repeat behavior and listening sessions. Your saved library currently contains {savedTrackCount.toLocaleString()} tracks.
+                </p>
               </div>
-            ) : null}
+              <div className="rounded-2xl border border-white/10 px-5 py-4">
+                <p className="text-2xl font-semibold">{savedTrackCount.toLocaleString()}</p>
+                <p className="text-xs text-white/35">saved tracks</p>
+              </div>
+            </div>
+            <Link className="mt-6 inline-flex rounded-full border border-white/15 px-5 py-3 text-sm font-medium text-white/70 transition hover:border-white/30 hover:text-white" href="/calendar">
+              Open listening calendar
+            </Link>
+
+            {recentPlays.length ? (
+              <>
+                <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {[
+                    ["Unique tracks", behavioralInsights.uniqueTrackCount],
+                    ["Repeat rate", `${behavioralInsights.repeatRate}%`],
+                    ["Sessions", behavioralInsights.sessionCount],
+                    ["Peak hour", formatHour(behavioralInsights.peakHour)],
+                  ].map(([label, value]) => (
+                    <article className="rounded-2xl border border-white/10 bg-white/[0.025] p-5" key={label}>
+                      <p className="text-2xl font-semibold">{value}</p>
+                      <p className="mt-1 text-xs text-white/35">{label}</p>
+                    </article>
+                  ))}
+                </div>
+                {repeatedTrack && behavioralInsights.mostRepeatedTrackCount > 1 ? (
+                  <p className="mt-5 text-sm text-white/45">
+                    Most repeated: <span className="text-white">{repeatedTrack.name}</span> with {behavioralInsights.mostRepeatedTrackCount} plays
+                  </p>
+                ) : null}
+                <ol className="mt-8 grid gap-2 lg:grid-cols-2">
+                {recentPlays.slice(0, 20).map(({ track, playedAt }) => (
+                  <li className="flex items-center gap-4 rounded-2xl bg-white/[0.035] p-3" key={playedAt.toISOString()}>
+                    {track.albumImageUrl ? (
+                      <Image alt="" className="h-12 w-12 rounded-xl object-cover" height={48} src={track.albumImageUrl} width={48} />
+                    ) : null}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{track.name}</p>
+                      <p className="truncate text-xs text-white/35">{track.artists.map(({ artist }) => artist.name).join(", ")}</p>
+                    </div>
+                    <time className="text-right text-xs text-white/35" dateTime={playedAt.toISOString()}>
+                      {playedAt.toLocaleDateString([], { weekday: "short" })}<br />
+                      {playedAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                    </time>
+                  </li>
+                ))}
+                </ol>
+              </>
+            ) : (
+              <div className="mt-8 rounded-2xl border border-dashed border-white/10 p-8 text-sm text-white/40">
+                Sync again after granting access to import your latest Spotify plays and saved library.
+              </div>
+            )}
           </section>
         ) : null}
+
       </section>
     </main>
   );
