@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { AccountMenu } from "@/app/account-menu";
 import { disconnectSpotify } from "@/app/actions/auth";
 import { db } from "@/lib/db";
 
@@ -22,13 +23,6 @@ export async function AppHeader({
         select: { id: true },
       })
     : null;
-  const initials = (userName ?? "Account")
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-
   return (
     <nav className="mx-auto grid w-full max-w-[78rem] grid-cols-[1fr_auto] items-center border-b border-white/10 px-2 py-5 sm:grid-cols-[auto_1fr_auto] sm:px-5 lg:px-8">
       <Link aria-label="InTune dashboard" className="inline-flex shrink-0 items-center gap-1.5 text-[22px] tracking-[-0.06em]" href={isAuthenticated ? "/dashboard" : "/"}>
@@ -42,43 +36,35 @@ export async function AppHeader({
       {isAuthenticated ? (
         <>
           <div className="col-span-2 row-start-2 mt-4 flex items-center gap-5 sm:col-span-1 sm:col-start-2 sm:row-start-1 sm:mt-0 sm:justify-self-center sm:gap-8">
-            <Link className="text-base font-semibold text-white/55 transition hover:text-white" href="/compare">
+            <Link className="text-base font-semibold text-zinc-950 transition hover:text-zinc-600" href="/compare">
               Taste Match
             </Link>
-            <Link className="text-base font-semibold text-white/55 transition hover:text-white" href="/calendar">
+            <Link className="text-base font-semibold text-zinc-950 transition hover:text-zinc-600" href="/calendar">
               Calendar
             </Link>
           </div>
           <div className="col-start-2 row-start-1 flex items-center gap-6 justify-self-end sm:col-start-3 lg:gap-12">
             {spotifyAccount ? (
               <details className="group relative hidden md:block">
-                <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold text-emerald-700 [&::-webkit-details-marker]:hidden">
-                  <span aria-hidden="true" className="h-2 w-2 rounded-full bg-emerald-500" />
-                  Spotify connected
+                <summary className="flex cursor-pointer list-none items-center gap-1.5 text-sm font-semibold text-emerald-800 [&::-webkit-details-marker]:hidden">
+                  <Image alt="" height={21} src="/spotify-icon.svg" width={22} />
+                  Connected
                 </summary>
-                <div className="invisible absolute right-0 top-full z-30 mt-3 w-72 -translate-y-1 rounded-2xl border border-zinc-200 bg-white p-4 opacity-0 shadow-lg shadow-black/5 transition-[opacity,transform] group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
-                  <p className="text-sm font-semibold text-emerald-700">Spotify connected</p>
-                  <p className="mt-2 text-xs leading-5 text-zinc-600">
-                    InTune reads your Spotify profile and listening data to build private comparisons. Your authorization is encrypted and can be revoked anytime.
-                  </p>
-                  <form action={disconnectSpotify} className="mt-4">
-                    <button className="text-sm font-semibold text-zinc-900 underline decoration-zinc-300 underline-offset-4 transition hover:decoration-zinc-900" type="submit">
-                      Disconnect Spotify
-                    </button>
-                  </form>
+                <div className="invisible absolute left-1/2 top-full z-30 w-72 -translate-x-1/2 -translate-y-1 pt-3 opacity-0 transition-[opacity,transform] group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-5 shadow-xl shadow-black/10">
+                    <p className="text-xs leading-5 text-white/40">
+                      InTune reads your Spotify profile and listening data to build private comparisons. Your authorization is encrypted and can be revoked anytime.
+                    </p>
+                    <form action={disconnectSpotify} className="mt-4">
+                      <button className="inline-flex rounded-full bg-lime-300 px-4 py-2 text-sm font-semibold text-neutral-950 transition hover:bg-lime-200" type="submit">
+                        Disconnect Spotify
+                      </button>
+                    </form>
+                  </div>
                 </div>
               </details>
             ) : null}
-            <div className="flex items-center gap-2.5">
-            {userImage ? (
-              <Image alt="" className="h-7 w-7 rounded-full object-cover" height={28} sizes="28px" src={userImage} width={28} />
-            ) : (
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-zinc-200 text-[10px] font-semibold text-zinc-600">
-                {initials}
-              </span>
-            )}
-            <span className="text-sm text-zinc-700">{userName ?? "Account"}</span>
-            </div>
+            <AccountMenu userImage={userImage} userName={userName} />
           </div>
         </>
       ) : (
