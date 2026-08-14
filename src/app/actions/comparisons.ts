@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { auth, signIn } from "@/auth";
@@ -10,9 +11,36 @@ import {
   createComparisonForUser,
   joinComparison,
 } from "@/lib/comparisons";
+import {
+  analyzeComparison,
+  ComparisonAnalysisError,
+} from "@/lib/compatibility-analysis";
 
 export interface ComparisonActionState {
   error: string;
+}
+
+export async function analyzeComparisonAction(
+  comparisonId: string,
+  _previousState: ComparisonActionState,
+): Promise<ComparisonActionState> {
+  void _previousState;
+  const session = await auth();
+
+  if (!session?.user.id) return { error: "Sign in before analyzing" };
+  if (!/^c[a-z0-9]{20,30}$/.test(comparisonId)) {
+    return { error: "Invalid comparison" };
+  }
+
+  try {
+    await analyzeComparison(comparisonId, session.user.id);
+  } catch (error) {
+    if (error instanceof ComparisonAnalysisError) return { error: error.message };
+    throw error;
+  }
+
+  revalidatePath(`/comparisons/${comparisonId}`);
+  return { error: "" };
 }
 
 export async function createComparisonAction(
