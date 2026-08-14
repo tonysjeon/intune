@@ -1,3 +1,8 @@
+import Link from "next/link";
+
+import { connectSpotify } from "@/app/actions/auth";
+import { auth } from "@/auth";
+
 const features = [
   {
     number: "01",
@@ -16,7 +21,9 @@ const features = [
   },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const session = await auth();
+
   return (
     <main className="min-h-screen overflow-hidden px-6 py-6 sm:px-10 lg:px-16">
       <nav className="mx-auto flex max-w-7xl items-center justify-between border-b border-white/10 pb-5">
@@ -42,12 +49,23 @@ export default function Home() {
             recommendations.
           </p>
           <div className="mt-10 flex flex-wrap items-center gap-4">
-            <button
-              className="rounded-full bg-lime-300 px-7 py-3.5 text-sm font-semibold text-neutral-950 transition hover:bg-lime-200"
-              type="button"
-            >
-              Connect Spotify
-            </button>
+            {session ? (
+              <Link
+                className="rounded-full bg-lime-300 px-7 py-3.5 text-sm font-semibold text-neutral-950 transition hover:bg-lime-200"
+                href="/dashboard"
+              >
+                Open dashboard
+              </Link>
+            ) : (
+              <form action={connectSpotify}>
+                <button
+                  className="rounded-full bg-lime-300 px-7 py-3.5 text-sm font-semibold text-neutral-950 transition hover:bg-lime-200"
+                  type="submit"
+                >
+                  Connect Spotify
+                </button>
+              </form>
+            )}
             <span className="text-sm text-white/35">Both people opt in separately</span>
           </div>
         </div>

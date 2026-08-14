@@ -22,9 +22,32 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## Planned environment variables
+## Configuration
 
-Copy `.env.example` to `.env.local` before implementing Spotify authentication and persistence. Never commit client secrets or database credentials.
+Copy `.env.example` to `.env.local`, then provide a PostgreSQL connection string, an authentication secret of at least 32 characters, and credentials from a Spotify developer application. Never commit client secrets or database credentials.
+
+Register this exact local redirect URI in the Spotify developer dashboard:
+
+```text
+http://localhost:3000/api/auth/callback/spotify
+```
+
+Initialize the database and start the app:
+
+```bash
+npm run db:migrate
+npm run dev
+```
+
+InTune requests `user-read-email`, `user-read-private`, and `user-top-read`. Access and refresh tokens are encrypted before they are persisted.
+
+## Quality checks
+
+```bash
+npm run lint
+npm test
+npm run build
+```
 
 ## MVP
 
