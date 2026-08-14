@@ -13,7 +13,7 @@
 }
 
 .privacy-policy h2 {
-  color: rgb(255 255 255);
+  color: #18181b;
   font-size: 1.5rem;
   font-weight: 600;
   letter-spacing: -0.025em;
@@ -22,7 +22,7 @@
 }
 
 .privacy-policy h3 {
-  color: rgb(255 255 255 / 0.8);
+  color: #3f3f46;
   font-size: 0.875rem;
   font-weight: 600;
   margin-top: 1.5rem;
@@ -43,15 +43,15 @@
 }
 
 .privacy-policy a {
-  color: rgb(190 242 100);
+  color: #047857;
   text-decoration: underline;
-  text-decoration-color: rgb(190 242 100 / 0.35);
+  text-decoration-color: rgb(4 120 87 / 0.35);
   text-underline-offset: 0.2em;
   transition: color 150ms ease, text-decoration-color 150ms ease;
 }
 
 .privacy-policy a:hover {
-  color: rgb(217 249 157);
+  color: #065f46;
   text-decoration-color: currentColor;
 }
 
@@ -169,6 +169,62 @@ body {
   }
 }
 
+@property --compatibility-progress {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+
+@keyframes compatibility-meter-fill {
+  to {
+    --compatibility-progress: var(--compatibility-target);
+  }
+}
+
+.compatibility-meter {
+  --compatibility-progress: 0%;
+  background: conic-gradient(#10b981 var(--compatibility-progress), #e4e4e7 0);
+  animation: compatibility-meter-fill 900ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
+}
+
+.taste-chart-bar {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  transform: scaleY(0);
+}
+
+.taste-chart-animate .taste-chart-bar {
+  animation: taste-chart-bar-enter 520ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.taste-chart-bar.taste-chart-artists {
+  fill: #10b981;
+}
+
+.taste-chart-bar.taste-chart-tracks {
+  fill: #3f3f46;
+}
+
+.taste-chart-value {
+  opacity: 0;
+}
+
+.taste-chart-animate .taste-chart-value {
+  animation: taste-chart-value-enter 180ms ease-out 550ms forwards;
+}
+
+@keyframes taste-chart-bar-enter {
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes taste-chart-value-enter {
+  to {
+    opacity: 1;
+  }
+}
+
 @keyframes rotation-content-enter {
   from {
     opacity: 0;
@@ -231,6 +287,21 @@ body {
   .sync-success-message,
   .sidebar-waterfall-enter {
     animation: none;
+  }
+
+  .compatibility-meter {
+    --compatibility-progress: var(--compatibility-target);
+    animation: none;
+  }
+
+  .taste-chart-bar {
+    animation: none;
+    transform: scaleY(1);
+  }
+
+  .taste-chart-value {
+    animation: none;
+    opacity: 1;
   }
 }
 

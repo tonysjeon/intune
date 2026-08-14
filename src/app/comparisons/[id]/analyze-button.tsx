@@ -4,13 +4,7 @@ import { useActionState } from "react";
 
 import { analyzeComparisonAction } from "@/app/actions/comparisons";
 
-export function AnalyzeButton({
-  comparisonId,
-  hasResult = false,
-}: {
-  comparisonId: string;
-  hasResult?: boolean;
-}) {
+export function AnalyzeButton({ comparisonId }: { comparisonId: string }) {
   const action = analyzeComparisonAction.bind(null, comparisonId);
   const [state, formAction, pending] = useActionState(action, { error: "" });
 
@@ -21,7 +15,7 @@ export function AnalyzeButton({
         disabled={pending}
         type="submit"
       >
-        {pending ? "Analyzing…" : hasResult ? "Refresh analysis" : "Analyze compatibility"}
+        {pending ? "Analyzing…" : "Analyze compatibility"}
       </button>
       {state.error ? <p className="mt-3 text-sm text-red-300">{state.error}</p> : null}
     </form>
