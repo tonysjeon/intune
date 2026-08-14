@@ -15,6 +15,18 @@ enum ComparisonStatus {
   FAILED
 }
 
+enum ListeningTimeRange {
+  SHORT_TERM
+  MEDIUM_TERM
+  LONG_TERM
+}
+
+enum SyncStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -26,8 +38,106 @@ model User {
 
   accounts           Account[]
   sessions           Session[]
-  createdComparisons Comparison[]       @relation("ComparisonCreator")
+  createdComparisons Comparison[]        @relation("ComparisonCreator")
   comparisonMembers  ComparisonMember[]
+  listeningSyncs     ListeningSync[]
+  listeningSnapshots ListeningSnapshot[]
+}
+
+model ListeningSync {
+  id          String     @id @default(cuid())
+  userId      String
+  status      SyncStatus @default(PROCESSING)
+  error       String?
+  startedAt   DateTime   @default(now())
+  completedAt DateTime?
+
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  snapshots ListeningSnapshot[]
+
+  @@index([userId, startedAt])
+  @@index([status])
+}
+
+model ListeningSnapshot {
+  id         String             @id @default(cuid())
+  syncId     String
+  userId     String
+  timeRange  ListeningTimeRange
+  capturedAt DateTime           @default(now())
+
+  sync       ListeningSync @relation(fields: [syncId], references: [id], onDelete: Cascade)
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topArtists TopArtist[]
+  topTracks  TopTrack[]
+
+  @@unique([syncId, timeRange])
+  @@index([userId, timeRange, capturedAt])
+}
+
+model SpotifyArtist {
+  id        String   @id
+  name      String
+  uri       String
+  imageUrl  String?
+  genres    String[]
+  updatedAt DateTime @updatedAt
+
+  topEntries TopArtist[]
+  tracks     TrackArtist[]
+}
+
+model SpotifyTrack {
+  id            String   @id
+  name          String
+  uri           String
+  albumName     String
+  albumImageUrl String?
+  durationMs    Int
+  explicit      Boolean
+  updatedAt     DateTime @updatedAt
+
+  topEntries TopTrack[]
+  artists    TrackArtist[]
+}
+
+model TrackArtist {
+  trackId  String
+  artistId String
+  position Int
+
+  track  SpotifyTrack  @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  artist SpotifyArtist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@id([trackId, artistId])
+  @@unique([trackId, position])
+  @@index([artistId])
+}
+
+model TopArtist {
+  snapshotId String
+  artistId   String
+  rank       Int
+
+  snapshot ListeningSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  artist   SpotifyArtist     @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@id([snapshotId, artistId])
+  @@unique([snapshotId, rank])
+  @@index([artistId])
+}
+
+model TopTrack {
+  snapshotId String
+  trackId    String
+  rank       Int
+
+  snapshot ListeningSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  track    SpotifyTrack      @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@id([snapshotId, trackId])
+  @@unique([snapshotId, rank])
+  @@index([trackId])
 }
 
 model Account {
