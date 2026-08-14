@@ -1,7 +1,10 @@
 import NextAuth from "next-auth";
 import Spotify, { type SpotifyProfile } from "next-auth/providers/spotify";
 
-import { encryptedPrismaAdapter } from "@/lib/auth-adapter";
+import {
+  encryptedPrismaAdapter,
+  updateEncryptedOAuthAccount,
+} from "@/lib/auth-adapter";
 import { getServerEnv } from "@/lib/env";
 import { SPOTIFY_SCOPES } from "@/lib/spotify";
 
@@ -36,6 +39,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
       }),
     ],
     callbacks: {
+      async signIn({ account }) {
+        if (account?.type === "oauth") {
+          await updateEncryptedOAuthAccount(account);
+        }
+        return true;
+      },
       redirect({ url, baseUrl }) {
         const destination = new URL(url, baseUrl);
         const internalOrigin = new URL(baseUrl).origin;

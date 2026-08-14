@@ -8,7 +8,23 @@ export const SPOTIFY_SCOPES = [
   "user-read-email",
   "user-read-private",
   "user-top-read",
+  "user-read-recently-played",
+  "user-library-read",
 ] as const;
+
+export const BEHAVIORAL_SPOTIFY_SCOPES = [
+  "user-read-recently-played",
+  "user-library-read",
+] as const;
+
+export async function hasSpotifyScopes(userId: string, required: readonly string[]) {
+  const account = await db.account.findFirst({
+    where: { userId, provider: "spotify" },
+    select: { scope: true },
+  });
+  const granted = new Set(account?.scope?.split(" ") ?? []);
+  return required.every((scope) => granted.has(scope));
+}
 
 const refreshResponseSchema = z.object({
   access_token: z.string(),

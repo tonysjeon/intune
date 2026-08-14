@@ -15,6 +15,7 @@ import {
   analyzeComparison,
   ComparisonAnalysisError,
 } from "@/lib/compatibility-analysis";
+import { SPOTIFY_SCOPES } from "@/lib/spotify";
 
 export interface ComparisonActionState {
   error: string;
@@ -125,5 +126,9 @@ export async function connectSpotifyFromInvite(formData: FormData) {
     throw new Error("Invalid invitation code");
   }
 
-  await signIn("spotify", { redirectTo: `/invite/${inviteCode}` });
+  await signIn(
+    "spotify",
+    { redirectTo: `/invite/${inviteCode}` },
+    { scope: SPOTIFY_SCOPES.join(" "), show_dialog: "true" },
+  );
 }

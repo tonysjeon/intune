@@ -42,6 +42,8 @@ model User {
   comparisonMembers  ComparisonMember[]
   listeningSyncs     ListeningSync[]
   listeningSnapshots ListeningSnapshot[]
+  recentPlays        RecentPlay[]
+  savedTracks        SavedTrack[]
 }
 
 model ListeningSync {
@@ -97,8 +99,39 @@ model SpotifyTrack {
   explicit      Boolean
   updatedAt     DateTime @updatedAt
 
-  topEntries TopTrack[]
-  artists    TrackArtist[]
+  topEntries  TopTrack[]
+  artists     TrackArtist[]
+  recentPlays RecentPlay[]
+  savedBy     SavedTrack[]
+}
+
+model RecentPlay {
+  userId     String
+  trackId    String
+  playedAt   DateTime
+  contextUri String?
+  createdAt  DateTime @default(now())
+
+  user  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  track SpotifyTrack @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@id([userId, playedAt])
+  @@index([userId, playedAt])
+  @@index([trackId])
+}
+
+model SavedTrack {
+  userId   String
+  trackId  String
+  addedAt  DateTime
+  syncedAt DateTime @default(now())
+
+  user  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  track SpotifyTrack @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@id([userId, trackId])
+  @@index([userId, addedAt])
+  @@index([trackId])
 }
 
 model TrackArtist {

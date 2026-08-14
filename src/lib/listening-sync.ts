@@ -6,10 +6,16 @@ import {
 
 import { db } from "@/lib/db";
 import { refreshComparisonsForUser } from "@/lib/comparisons";
-import { getSpotifyAccessToken } from "@/lib/spotify";
+import {
+  BEHAVIORAL_SPOTIFY_SCOPES,
+  getSpotifyAccessToken,
+  hasSpotifyScopes,
+  SpotifyReauthorizationError,
+} from "@/lib/spotify";
 import {
   SpotifyApiClient,
   type SpotifyArtist,
+  type SpotifySavedTrack,
   type SpotifyTimeRange,
   type SpotifyTrack,
   spotifyTimeRanges,
@@ -33,32 +39,84 @@ export async function syncSpotifyListeningData(userId: string) {
   });
 
   try {
+    if (!(await hasSpotifyScopes(userId, BEHAVIORAL_SPOTIFY_SCOPES))) {
+      throw new SpotifyReauthorizationError();
+    }
+
     const accessToken = await getSpotifyAccessToken(userId);
     const spotify = new SpotifyApiClient(accessToken);
-    const ranges = await Promise.all(
-      spotifyTimeRanges.map(async (timeRange) => {
+    const latestPlay = await db.recentPlay.findFirst({
+      where: { userId },
+      orderBy: { playedAt: "desc" },
+      select: { playedAt: true },
+    });
+    const [ranges, recentResponse, savedTracks] = await Promise.all([
+      Promise.all(spotifyTimeRanges.map(async (timeRange) => {
         const [artists, tracks] = await Promise.all([
           spotify.getTopArtists(timeRange),
           spotify.getTopTracks(timeRange),
         ]);
 
         return { timeRange, artists, tracks } satisfies ListeningRangeData;
-      }),
+      })),
+      spotify.getRecentlyPlayed(latestPlay?.playedAt.getTime()),
+      getAllSavedTracks(spotify),
+    ]);
+    const allTracks = new Map(
+      [
+        ...ranges.flatMap(({ tracks }) => tracks),
+        ...recentResponse.items.map(({ track }) => track),
+        ...savedTracks.map(({ track }) => track),
+      ].map((track) => [track.id, track]),
     );
 
     await db.$transaction(async (transaction) => {
+      for (const artist of new Map(
+        ranges.flatMap(({ artists }) => artists.map((artist) => [artist.id, artist])),
+      ).values()) {
+        await upsertArtist(transaction, artist);
+      }
+      await createTracksInBulk(transaction, [...allTracks.values()]);
+      for (const track of new Map(
+        ranges.flatMap(({ tracks }) => tracks.map((track) => [track.id, track])),
+      ).values()) {
+        await upsertTrack(transaction, track);
+      }
       for (const range of ranges) {
         await persistRange(transaction, sync.id, userId, range);
       }
+
+      await transaction.recentPlay.createMany({
+        data: recentResponse.items.map(({ track, played_at, context }) => ({
+          userId,
+          trackId: track.id,
+          playedAt: new Date(played_at),
+          contextUri: context?.uri ?? null,
+        })),
+        skipDuplicates: true,
+      });
+      await transaction.savedTrack.deleteMany({ where: { userId } });
+      await transaction.savedTrack.createMany({
+        data: savedTracks.map(({ track, added_at }) => ({
+          userId,
+          trackId: track.id,
+          addedAt: new Date(added_at),
+        })),
+      });
 
       await transaction.listeningSync.update({
         where: { id: sync.id },
         data: { status: SyncStatus.COMPLETED, completedAt: new Date() },
       });
-    });
+    }, { timeout: 60_000 });
     await refreshComparisonsForUser(userId);
 
-    return { syncId: sync.id, ranges: ranges.length };
+    return {
+      syncId: sync.id,
+      ranges: ranges.length,
+      recentPlays: recentResponse.items.length,
+      savedTracks: savedTracks.length,
+    };
   } catch (error) {
     await db.listeningSync.update({
       where: { id: sync.id },
@@ -72,28 +130,52 @@ export async function syncSpotifyListeningData(userId: string) {
   }
 }
 
-async function persistRange(
-  transaction: Prisma.TransactionClient,
-  syncId: string,
-  userId: string,
-  range: ListeningRangeData,
-) {
-  for (const artist of range.artists) {
-    await upsertArtist(transaction, artist);
+async function getAllSavedTracks(spotify: SpotifyApiClient) {
+  const savedTracks: SpotifySavedTrack[] = [];
+  let offset = 0;
+
+  for (let pageNumber = 0; pageNumber < 200; pageNumber += 1) {
+    const page = await spotify.getSavedTracksPage(offset);
+    savedTracks.push(...page.items);
+    if (!page.next) break;
+    offset += page.items.length;
   }
 
-  for (const track of range.tracks) {
-    for (const artist of track.artists) {
-      await transaction.spotifyArtist.upsert({
-        where: { id: artist.id },
-        create: { ...artist, genres: [], imageUrl: null },
-        update: { name: artist.name, uri: artist.uri },
-      });
-    }
+  return savedTracks;
+}
 
-    await transaction.spotifyTrack.upsert({
-      where: { id: track.id },
-      create: {
+async function createTracksInBulk(
+  transaction: Prisma.TransactionClient,
+  tracks: SpotifyTrack[],
+) {
+  const artists = new Map(
+    tracks.flatMap((track) =>
+      track.artists.map((artist) => [artist.id, artist] as const),
+    ),
+  );
+  const trackArtists = tracks.flatMap((track) =>
+    track.artists.map((artist, position) => ({
+      trackId: track.id,
+      artistId: artist.id,
+      position,
+    })),
+  );
+
+  for (const chunk of chunks([...artists.values()], 500)) {
+    await transaction.spotifyArtist.createMany({
+      data: chunk.map((artist) => ({
+        id: artist.id,
+        name: artist.name,
+        uri: artist.uri,
+        imageUrl: null,
+        genres: [],
+      })),
+      skipDuplicates: true,
+    });
+  }
+  for (const chunk of chunks(tracks, 500)) {
+    await transaction.spotifyTrack.createMany({
+      data: chunk.map((track) => ({
         id: track.id,
         name: track.name,
         uri: track.uri,
@@ -101,27 +183,32 @@ async function persistRange(
         albumImageUrl: track.album.images[0]?.url ?? null,
         durationMs: track.duration_ms,
         explicit: track.explicit,
-      },
-      update: {
-        name: track.name,
-        uri: track.uri,
-        albumName: track.album.name,
-        albumImageUrl: track.album.images[0]?.url ?? null,
-        durationMs: track.duration_ms,
-        explicit: track.explicit,
-      },
-    });
-
-    await transaction.trackArtist.deleteMany({ where: { trackId: track.id } });
-    await transaction.trackArtist.createMany({
-      data: track.artists.map((artist, position) => ({
-        trackId: track.id,
-        artistId: artist.id,
-        position,
       })),
+      skipDuplicates: true,
     });
   }
+  for (const chunk of chunks(trackArtists, 500)) {
+    await transaction.trackArtist.createMany({
+      data: chunk,
+      skipDuplicates: true,
+    });
+  }
+}
 
+function chunks<T>(items: T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    result.push(items.slice(index, index + size));
+  }
+  return result;
+}
+
+async function persistRange(
+  transaction: Prisma.TransactionClient,
+  syncId: string,
+  userId: string,
+  range: ListeningRangeData,
+) {
   const snapshot = await transaction.listeningSnapshot.create({
     data: {
       syncId,
@@ -142,6 +229,49 @@ async function persistRange(
       snapshotId: snapshot.id,
       trackId: track.id,
       rank: index + 1,
+    })),
+  });
+}
+
+async function upsertTrack(
+  transaction: Prisma.TransactionClient,
+  track: SpotifyTrack,
+) {
+  for (const artist of track.artists) {
+    await transaction.spotifyArtist.upsert({
+      where: { id: artist.id },
+      create: { ...artist, genres: [], imageUrl: null },
+      update: { name: artist.name, uri: artist.uri },
+    });
+  }
+
+  await transaction.spotifyTrack.upsert({
+    where: { id: track.id },
+    create: {
+      id: track.id,
+      name: track.name,
+      uri: track.uri,
+      albumName: track.album.name,
+      albumImageUrl: track.album.images[0]?.url ?? null,
+      durationMs: track.duration_ms,
+      explicit: track.explicit,
+    },
+    update: {
+      name: track.name,
+      uri: track.uri,
+      albumName: track.album.name,
+      albumImageUrl: track.album.images[0]?.url ?? null,
+      durationMs: track.duration_ms,
+      explicit: track.explicit,
+    },
+  });
+
+  await transaction.trackArtist.deleteMany({ where: { trackId: track.id } });
+  await transaction.trackArtist.createMany({
+    data: track.artists.map((artist, position) => ({
+      trackId: track.id,
+      artistId: artist.id,
+      position,
     })),
   });
 }
