@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { connectSpotifyFromInvite } from "@/app/actions/comparisons";
+import { AppHeader } from "@/app/app-header";
 import { auth } from "@/auth";
 import { JoinForm } from "@/app/invite/[inviteCode]/join-form";
 import { db } from "@/lib/db";
@@ -29,14 +29,7 @@ export default async function InvitePage({
 
   return (
     <main className="min-h-screen px-6 py-6 sm:px-10 lg:px-16">
-      <nav className="mx-auto flex max-w-3xl items-center justify-between border-b border-white/10 pb-5">
-        <Link className="text-xl font-semibold tracking-tight" href="/">
-          in<span className="text-lime-300">tune</span>
-        </Link>
-        <span className="text-xs uppercase tracking-[0.2em] text-white/35">
-          Private invitation
-        </span>
-      </nav>
+      <AppHeader label="Private invitation" userId={session?.user.id} userImage={session?.user.image} userName={session?.user.name} />
 
       <section className="mx-auto max-w-3xl py-24">
         <p className="text-sm font-medium uppercase tracking-[0.24em] text-lime-300">

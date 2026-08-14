@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import "./globals.css";
+import { GeistSans } from "geist/font/sans";
+import "./app.css";
 
 export const metadata: Metadata = {
   title: "InTune — See how your music tastes connect",
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" className={`${GeistSans.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

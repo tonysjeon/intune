@@ -1,9 +1,9 @@
 import { ComparisonStatus } from "@prisma/client";
 import Image from "next/image";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
+import { AppHeader } from "@/app/app-header";
 import { AnalyzeButton } from "@/app/comparisons/[id]/analyze-button";
 import { ShareInvite } from "@/app/comparisons/[id]/share-invite";
 import { SyncButton } from "@/app/dashboard/sync-button";
@@ -43,14 +43,7 @@ export default async function ComparisonPage({
 
   return (
     <main className="min-h-screen px-6 py-6 sm:px-10 lg:px-16">
-      <nav className="mx-auto flex max-w-5xl items-center justify-between border-b border-white/10 pb-5">
-        <Link className="text-xl font-semibold tracking-tight" href="/dashboard">
-          in<span className="text-lime-300">tune</span>
-        </Link>
-        <span className="text-xs uppercase tracking-[0.2em] text-white/35">
-          Taste comparison
-        </span>
-      </nav>
+      <AppHeader userId={session.user.id} userImage={session.user.image} userName={session.user.name} />
 
       <section className="mx-auto max-w-5xl py-20">
         <p className="text-sm font-medium uppercase tracking-[0.24em] text-lime-300">

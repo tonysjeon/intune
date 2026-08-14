@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { connectSpotify } from "@/app/actions/auth";
 import { auth } from "@/auth";
+import { AppHeader } from "@/app/app-header";
 
 const features = [
   {
@@ -26,14 +27,7 @@ export default async function Home() {
 
   return (
     <main className="min-h-screen overflow-hidden px-6 py-6 sm:px-10 lg:px-16">
-      <nav className="mx-auto flex max-w-7xl items-center justify-between border-b border-white/10 pb-5">
-        <a className="text-xl font-semibold tracking-tight" href="#">
-          in<span className="text-lime-300">tune</span>
-        </a>
-        <span className="text-xs uppercase tracking-[0.22em] text-white/45">
-          Spotify taste matching
-        </span>
-      </nav>
+      <AppHeader userId={session?.user.id} userImage={session?.user.image} userName={session?.user.name} />
 
       <section className="mx-auto grid min-h-[70vh] max-w-7xl items-center gap-14 py-20 lg:grid-cols-[1.15fr_0.85fr] lg:py-24">
         <div>
