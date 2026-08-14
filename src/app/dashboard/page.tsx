@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { connectSpotify, disconnectSpotify } from "@/app/actions/auth";
 import { auth } from "@/auth";
 import { SyncButton } from "@/app/dashboard/sync-button";
+import { CreateComparisonForm } from "@/app/dashboard/create-comparison-form";
 import { db } from "@/lib/db";
 
 const timeRanges = {
@@ -28,7 +29,7 @@ export default async function DashboardPage({
   const query = await searchParams;
   const requestedRange = typeof query.range === "string" ? query.range : "medium";
   const range: RangeKey = requestedRange in timeRanges ? (requestedRange as RangeKey) : "medium";
-  const [spotifyAccount, snapshot, latestSync] = await Promise.all([
+  const [spotifyAccount, snapshot, latestSync, comparisons] = await Promise.all([
     db.account.findFirst({
       where: { userId: session.user.id, provider: "spotify" },
       select: { scope: true, updatedAt: true },
@@ -53,6 +54,17 @@ export default async function DashboardPage({
       where: { userId: session.user.id },
       orderBy: { startedAt: "desc" },
       select: { status: true, completedAt: true },
+    }),
+    db.comparison.findMany({
+      where: { members: { some: { userId: session.user.id } } },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+      include: {
+        members: {
+          orderBy: { joinedAt: "asc" },
+          select: { user: { select: { id: true, name: true } } },
+        },
+      },
     }),
   ]);
 
@@ -206,6 +218,46 @@ export default async function DashboardPage({
             <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-white/40">
               Sync Spotify to collect your top artists and tracks across all three listening ranges.
             </p>
+          </section>
+        ) : null}
+
+        {snapshot ? (
+          <section className="mt-16 border-t border-white/10 pt-12">
+            <p className="text-xs uppercase tracking-[0.2em] text-white/35">
+              Taste match
+            </p>
+            <h2 className="mt-4 text-3xl font-medium tracking-tight">
+              Compare with a friend
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-white/45">
+              Create a private invitation. Your friend connects their own Spotify
+              account and chooses whether to share their taste data.
+            </p>
+            <CreateComparisonForm />
+
+            {comparisons.length ? (
+              <div className="mt-10 grid gap-3 sm:grid-cols-2">
+                {comparisons.map((comparison) => {
+                  const otherMember = comparison.members.find(
+                    ({ user }) => user.id !== session.user.id,
+                  );
+                  return (
+                    <Link
+                      className="rounded-2xl border border-white/10 bg-white/[0.025] p-5 transition hover:bg-white/[0.05]"
+                      href={`/comparisons/${comparison.id}`}
+                      key={comparison.id}
+                    >
+                      <p className="text-sm font-medium">
+                        {otherMember?.user.name ?? "Waiting for a friend"}
+                      </p>
+                      <p className="mt-2 text-xs uppercase tracking-[0.16em] text-white/30">
+                        {comparison.status.toLowerCase()}
+                      </p>
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : null}
           </section>
         ) : null}
       </section>
