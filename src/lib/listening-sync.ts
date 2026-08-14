@@ -5,6 +5,7 @@ import {
 } from "@prisma/client";
 
 import { db } from "@/lib/db";
+import { refreshComparisonsForUser } from "@/lib/comparisons";
 import { getSpotifyAccessToken } from "@/lib/spotify";
 import {
   SpotifyApiClient,
@@ -55,6 +56,7 @@ export async function syncSpotifyListeningData(userId: string) {
         data: { status: SyncStatus.COMPLETED, completedAt: new Date() },
       });
     });
+    await refreshComparisonsForUser(userId);
 
     return { syncId: sync.id, ranges: ranges.length };
   } catch (error) {
