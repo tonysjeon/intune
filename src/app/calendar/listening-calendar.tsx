@@ -197,7 +197,10 @@ export function ListeningCalendar({ plays }: { plays: CalendarPlay[] }) {
                                 <p className="truncate text-sm font-semibold">{play.name}</p>
                                 <div className="relative h-4">
                                   <p className="truncate text-xs text-white/35 transition-opacity group-hover:opacity-0">{play.artistNames.join(", ")}</p>
-                                  <p className="absolute inset-0 truncate text-xs font-medium text-emerald-700 opacity-0 transition-opacity group-hover:opacity-100">Open in Spotify ↗</p>
+                                  <p className="absolute inset-0 flex items-center gap-1 whitespace-nowrap text-[11px] font-medium text-emerald-800 opacity-0 transition-opacity group-hover:opacity-100">
+                                    <Image alt="" height={13} src="/spotify-icon.svg" width={14} />
+                                    Open in Spotify ↗
+                                  </p>
                                 </div>
                               </div>
                             </a>

@@ -101,10 +101,10 @@ export default async function DashboardPage({
         <div className="flex flex-col justify-between gap-8 sm:flex-row sm:items-end">
           <div>
             <p className="text-sm font-medium uppercase tracking-[0.24em] text-lime-300">
-              Your listening profile
+              Listening activity
             </p>
             <h1 className="mt-5 text-5xl font-semibold tracking-[-0.05em] sm:text-6xl">
-              Welcome, {session.user.name?.split(" ")[0] ?? "listener"}
+              Your listening profile
             </h1>
           </div>
           <div className="flex flex-wrap items-center gap-4 pb-1">
@@ -130,8 +130,7 @@ export default async function DashboardPage({
           <section className="mt-16 border-b border-white/10 pb-16">
             <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-lime-300">Listening activity</p>
-                <h2 className="mt-4 text-3xl font-medium tracking-tight">Recent listening</h2>
+                <h2 className="text-3xl font-medium tracking-tight">Recent listening</h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-white/45">
                   A snapshot of your latest {behavioralInsights.playCount} Spotify plays.
                 </p>
@@ -156,7 +155,10 @@ export default async function DashboardPage({
                         <p className="truncate text-[11px] text-white/35 transition-opacity group-hover:opacity-0">
                           {repeatedTrack.artists.map(({ artist }) => artist.name).join(", ")}
                         </p>
-                        <p className="absolute inset-0 truncate text-[11px] font-medium text-emerald-700 opacity-0 transition-opacity group-hover:opacity-100">Open in Spotify ↗</p>
+                        <p className="absolute inset-0 flex items-center gap-1 whitespace-nowrap text-[10px] font-medium text-emerald-800 opacity-0 transition-opacity group-hover:opacity-100">
+                          <Image alt="" height={12} src="/spotify-icon.svg" width={13} />
+                          Open in Spotify ↗
+                        </p>
                       </div>
                     </div>
                     <span className="flex shrink-0 items-center pr-3 text-xs text-white/35">{behavioralInsights.mostRepeatedTrackCount} plays</span>
@@ -204,7 +206,10 @@ export default async function DashboardPage({
                           <p className="truncate text-sm font-semibold">{track.name}</p>
                           <div className="relative h-4">
                             <p className="truncate text-[11px] text-white/35 transition-opacity group-hover:opacity-0">{track.artists.map(({ artist }) => artist.name).join(", ")}</p>
-                            <p className="absolute inset-0 truncate text-[11px] font-medium text-emerald-700 opacity-0 transition-opacity group-hover:opacity-100">Open in Spotify ↗</p>
+                            <p className="absolute inset-0 flex items-center gap-1 whitespace-nowrap text-[10px] font-medium text-emerald-800 opacity-0 transition-opacity group-hover:opacity-100">
+                              <Image alt="" height={12} src="/spotify-icon.svg" width={13} />
+                              Open in Spotify ↗
+                            </p>
                           </div>
                         </div>
                       </a>
@@ -271,7 +276,10 @@ export default async function DashboardPage({
                                 <p className="truncate text-xs text-white/35 transition-opacity group-hover:opacity-0">
                                   {artist.genres.length ? artist.genres.slice(0, 2).join(" · ") : "Artist"}
                                 </p>
-                                <p className="absolute inset-0 truncate text-xs font-medium text-emerald-700 opacity-0 transition-opacity group-hover:opacity-100">Open in Spotify ↗</p>
+                                <p className="absolute inset-0 flex items-center gap-1 whitespace-nowrap text-[11px] font-medium text-emerald-800 opacity-0 transition-opacity group-hover:opacity-100">
+                                  <Image alt="" height={13} src="/spotify-icon.svg" width={14} />
+                                  Open in Spotify ↗
+                                </p>
                               </div>
                             </div>
                           </div>
@@ -320,7 +328,10 @@ export default async function DashboardPage({
                                 <p className="truncate text-[11px] text-white/35 transition-opacity group-hover:opacity-0">
                                   {track.artists.map(({ artist }) => artist.name).join(", ")}
                                 </p>
-                                <p className="absolute inset-0 truncate text-[11px] font-medium text-emerald-700 opacity-0 transition-opacity group-hover:opacity-100">Open in Spotify ↗</p>
+                                <p className="absolute inset-0 flex items-center gap-1 whitespace-nowrap text-[10px] font-medium text-emerald-800 opacity-0 transition-opacity group-hover:opacity-100">
+                                  <Image alt="" height={12} src="/spotify-icon.svg" width={13} />
+                                  Open in Spotify ↗
+                                </p>
                               </div>
                             </div>
                           </div>
