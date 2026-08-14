@@ -20,7 +20,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://127.0.0.1:3000](http://127.0.0.1:3000).
 
 ## Configuration
 
@@ -29,7 +29,7 @@ Copy `.env.example` to `.env.local`, then provide a PostgreSQL connection string
 Register this exact local redirect URI in the Spotify developer dashboard:
 
 ```text
-http://localhost:3000/api/auth/callback/spotify
+http://127.0.0.1:3000/api/auth/callback/spotify
 ```
 
 Initialize the database and start the app:

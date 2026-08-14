@@ -4,6 +4,7 @@ import { getServerEnv } from "./env";
 
 const validEnvironment = {
   AUTH_SECRET: "abcdefghijklmnopqrstuvwxyz123456",
+  AUTH_URL: "http://127.0.0.1:3000",
   DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/intune",
   SPOTIFY_CLIENT_ID: "spotify-client-id",
   SPOTIFY_CLIENT_SECRET: "spotify-client-secret",
@@ -24,6 +25,7 @@ describe("server environment", () => {
 
   it("reports missing configuration without exposing secret values", () => {
     vi.stubEnv("AUTH_SECRET", "short");
+    vi.stubEnv("AUTH_URL", "not-a-url");
     vi.stubEnv("DATABASE_URL", "not-a-url");
     vi.stubEnv("SPOTIFY_CLIENT_ID", "");
     vi.stubEnv("SPOTIFY_CLIENT_SECRET", "super-secret-value");
@@ -36,7 +38,9 @@ describe("server environment", () => {
       message = error instanceof Error ? error.message : String(error);
     }
 
-    expect(message).toMatch(/AUTH_SECRET, DATABASE_URL, SPOTIFY_CLIENT_ID/);
+    expect(message).toMatch(
+      /AUTH_SECRET, AUTH_URL, DATABASE_URL, SPOTIFY_CLIENT_ID/,
+    );
     expect(message).not.toContain("super-secret-value");
   });
 });
