@@ -34,6 +34,7 @@ export async function disconnectSpotify() {
 
   revalidatePath("/");
   revalidatePath("/dashboard");
+  revalidatePath("/calendar");
 }
 
 export async function syncListeningData(
