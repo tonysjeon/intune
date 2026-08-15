@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { auth, signIn } from "@/auth";
+import { auth, signIn, signOut } from "@/auth";
 import { db } from "@/lib/db";
 import { syncSpotifyListeningData } from "@/lib/listening-sync";
 import { SPOTIFY_SCOPES, SpotifyReauthorizationError } from "@/lib/spotify";
@@ -11,6 +11,7 @@ import { SpotifyApiError } from "@/lib/spotify-api";
 export interface ListeningSyncState {
   status: "idle" | "success" | "error";
   message: string;
+  requiresReauthorization?: boolean;
 }
 
 export async function connectSpotify() {
@@ -37,6 +38,21 @@ export async function disconnectSpotify() {
   revalidatePath("/calendar");
 }
 
+export async function signOutAccount() {
+  await signOut({ redirectTo: "/" });
+}
+
+export async function deleteAccount() {
+  const session = await auth();
+
+  if (!session?.user.id) {
+    throw new Error("You must be signed in to delete your account");
+  }
+
+  await db.user.delete({ where: { id: session.user.id } });
+  await signOut({ redirectTo: "/" });
+}
+
 export async function syncListeningData(
   _previousState: ListeningSyncState,
 ): Promise<ListeningSyncState> {
@@ -50,10 +66,14 @@ export async function syncListeningData(
   try {
     await syncSpotifyListeningData(session.user.id);
     revalidatePath("/dashboard");
-    return { status: "success", message: "Your listening data is up to date" };
+    return { status: "success", message: "Listening data updated" };
   } catch (error) {
     if (error instanceof SpotifyReauthorizationError) {
-      return { status: "error", message: "Reconnect Spotify and try again" };
+      return {
+        status: "error",
+        message: "Spotify needs to be reconnected",
+        requiresReauthorization: true,
+      };
     }
 
     if (error instanceof SpotifyApiError && error.status === 429) {
@@ -61,6 +81,6 @@ export async function syncListeningData(
       return { status: "error", message: `Spotify is rate limiting requests.${wait}` };
     }
 
-    return { status: "error", message: "Spotify sync failed Please try again" };
+    return { status: "error", message: "Spotify sync failed. Please try again." };
   }
 }

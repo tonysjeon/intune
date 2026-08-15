@@ -6,6 +6,7 @@ import {
 
 import { db } from "@/lib/db";
 import { refreshComparisonsForUser } from "@/lib/comparisons";
+import { ACTIVE_SYNC_TIMEOUT_MS } from "@/lib/listening-sync-policy";
 import {
   BEHAVIORAL_SPOTIFY_SCOPES,
   getSpotifyAccessToken,
@@ -34,6 +35,19 @@ interface ListeningRangeData {
 }
 
 export async function syncSpotifyListeningData(userId: string) {
+  const activeSync = await db.listeningSync.findFirst({
+    where: {
+      userId,
+      status: SyncStatus.PROCESSING,
+      startedAt: { gte: new Date(Date.now() - ACTIVE_SYNC_TIMEOUT_MS) },
+    },
+    select: { id: true },
+  });
+
+  if (activeSync) {
+    return { syncId: activeSync.id, skipped: true };
+  }
+
   const sync = await db.listeningSync.create({
     data: { userId, status: SyncStatus.PROCESSING },
   });

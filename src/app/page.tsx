@@ -26,7 +26,7 @@ export default async function Home() {
   const session = await auth();
 
   return (
-    <main className="min-h-screen overflow-hidden px-6 py-6 sm:px-10 lg:px-16">
+    <main className="overflow-hidden px-6 pt-6 sm:px-10 lg:px-16">
       <AppHeader userId={session?.user.id} userImage={session?.user.image} userName={session?.user.name} />
 
       <section className="mx-auto grid min-h-[70vh] max-w-7xl items-center gap-14 py-20 lg:grid-cols-[1.15fr_0.85fr] lg:py-24">
@@ -93,6 +93,7 @@ export default async function Home() {
           </article>
         ))}
       </section>
+
     </main>
   );
 }

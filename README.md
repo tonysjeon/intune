@@ -39,7 +39,18 @@ npm run db:migrate
 npm run dev
 ```
 
-InTune requests `user-read-email`, `user-read-private`, and `user-top-read`. Access and refresh tokens are encrypted before they are persisted.
+InTune requests `user-read-email`, `user-read-private`, `user-top-read`, `user-read-recently-played`, and `user-library-read`. Access and refresh tokens are encrypted before they are persisted.
+
+### Automatic Spotify sync
+
+The dashboard refreshes listening data automatically when the latest completed sync is at least six hours old. To update inactive accounts on the same cadence, set a random `CRON_SECRET` of at least 32 characters and configure your hosting provider to request this endpoint every six hours:
+
+```text
+GET /api/cron/spotify-sync
+Authorization: Bearer <CRON_SECRET>
+```
+
+The endpoint skips fresh accounts and active syncs. Users must reconnect Spotify when their authorization expires or is revoked.
 
 ## Quality checks
 

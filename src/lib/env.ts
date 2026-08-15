@@ -6,6 +6,7 @@ const serverEnvSchema = z.object({
   DATABASE_URL: z.url(),
   SPOTIFY_CLIENT_ID: z.string().min(1),
   SPOTIFY_CLIENT_SECRET: z.string().min(1),
+  CRON_SECRET: z.string().min(32).optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

@@ -28,7 +28,7 @@ export default async function InvitePage({
   const isFull = invitation._count.members >= 2;
 
   return (
-    <main className="min-h-screen px-6 py-6 sm:px-10 lg:px-16">
+    <main className="px-6 pt-6 sm:px-10 lg:px-16">
       <AppHeader label="Private invitation" userId={session?.user.id} userImage={session?.user.image} userName={session?.user.name} />
 
       <section className="mx-auto max-w-3xl py-24">

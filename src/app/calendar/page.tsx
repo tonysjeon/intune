@@ -23,7 +23,7 @@ export default async function CalendarPage() {
   });
 
   return (
-    <main className="min-h-screen px-6 py-6 sm:px-10 lg:px-16">
+    <main className="px-6 pt-6 sm:px-10 lg:px-16">
       <AppHeader userId={session.user.id} userImage={session.user.image} userName={session.user.name} />
       <ListeningCalendar
         plays={plays.map(({ track, trackId, playedAt }) => ({

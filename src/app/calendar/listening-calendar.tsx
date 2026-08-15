@@ -145,7 +145,7 @@ export function ListeningCalendar({ plays }: { plays: CalendarPlay[] }) {
                   {images.length ? (
                     <span className="absolute bottom-1.5 left-1.5 flex h-8 w-14 sm:bottom-2.5 sm:left-2.5 sm:h-11 sm:w-20">
                       {images.map((image, index) => (
-                        <Image alt="" className="absolute h-8 w-8 rounded-lg border-2 border-white object-cover shadow-lg sm:h-11 sm:w-11" height={44} key={image} src={image} style={{ left: index * 12, zIndex: images.length - index }} width={44} />
+                        <Image alt="" className="absolute h-8 w-8 rounded border-2 border-white object-cover shadow-lg sm:h-11 sm:w-11" height={44} key={image} src={image} style={{ left: index * 12, zIndex: images.length - index }} width={44} />
                       ))}
                     </span>
                   ) : null}
@@ -157,7 +157,7 @@ export function ListeningCalendar({ plays }: { plays: CalendarPlay[] }) {
         </div>
 
         <aside className="flex h-full min-h-0 w-full flex-col rounded-[2rem] border border-white/10 bg-white p-6 shadow-lg shadow-black/5 xl:h-[790px]">
-          <div className="sidebar-content-enter flex min-h-0 flex-1 flex-col" key={selectedDay}>
+          <div className="flex min-h-0 flex-1 flex-col" key={selectedDay}>
             <div className="flex items-center justify-between gap-4">
               <h2 className="text-[22px] font-semibold leading-none tracking-tight">
                 {new Date(`${selectedDay}T12:00:00`).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}
@@ -171,21 +171,42 @@ export function ListeningCalendar({ plays }: { plays: CalendarPlay[] }) {
                   {selectedPlayGroups.map((group, groupIndex) => (
                     <li key={`${group[0].playedAt}:${group[0].trackId}`}>
                       <ol className="space-y-1">
-                        {group.map((play, playIndex) => (
-                          <li className="relative grid grid-cols-[58px_minmax(0,1fr)] items-stretch gap-3 px-2" key={`${play.playedAt}:${play.trackId}`}>
+                        {group.map((play, playIndex) => {
+                          const waterfallIndex = selectedPlayGroups
+                            .slice(0, groupIndex)
+                            .reduce((count, previousGroup) => count + previousGroup.length, 0) + playIndex;
+
+                          return (
+                          <li
+                            className="sidebar-waterfall-enter relative grid grid-cols-[58px_minmax(0,1fr)] items-stretch gap-3 px-2"
+                            key={`${play.playedAt}:${play.trackId}`}
+                            style={{ animationDelay: `${50 + Math.min(waterfallIndex, 12) * 35}ms` }}
+                          >
                             <div className="relative flex items-center justify-center">
                               <time className="relative z-10 whitespace-nowrap rounded-md bg-white px-1 py-1 text-[11px] font-medium tabular-nums text-white/40" dateTime={play.playedAt}>{new Date(play.playedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</time>
                               {playIndex < group.length - 1 ? <span aria-hidden="true" className="absolute -bottom-[34px] left-1/2 top-1/2 z-0 w-0.5 -translate-x-1/2 bg-zinc-300" /> : null}
                             </div>
-                            <div className="grid grid-cols-[44px_minmax(0,1fr)] items-center gap-3 rounded-xl px-2 py-2 transition hover:bg-white/[0.04]">
-                              {play.albumImageUrl ? <Image alt="" className="h-11 w-11 rounded-lg object-cover" height={44} src={play.albumImageUrl} width={44} /> : <span className="h-11 w-11 rounded-lg bg-white/[0.05]" />}
+                            <a
+                              className="group grid grid-cols-[44px_minmax(0,1fr)] items-center gap-3 rounded px-2 py-2 transition hover:bg-white/[0.04]"
+                              href={`https://open.spotify.com/track/${play.trackId}`}
+                              rel="noopener noreferrer"
+                              target="_blank"
+                            >
+                              {play.albumImageUrl ? <Image alt="" className="h-11 w-11 rounded object-cover" height={44} src={play.albumImageUrl} width={44} /> : <span className="h-11 w-11 rounded bg-white/[0.05]" />}
                               <div className="min-w-0">
                                 <p className="truncate text-sm font-semibold">{play.name}</p>
-                                <p className="truncate text-xs text-white/35">{play.artistNames.join(", ")}</p>
+                                <div className="relative h-4">
+                                  <p className="truncate text-xs text-white/35 transition-opacity group-hover:opacity-0">{play.artistNames.join(", ")}</p>
+                                  <p className="absolute inset-0 flex items-center gap-1 whitespace-nowrap text-[11px] font-medium text-emerald-800 opacity-0 transition-opacity group-hover:opacity-100">
+                                    <Image alt="" height={13} src="/spotify-icon.svg" width={14} />
+                                    Open in Spotify ↗
+                                  </p>
+                                </div>
                               </div>
-                            </div>
+                            </a>
                           </li>
-                        ))}
+                          );
+                        })}
                       </ol>
                       {groupIndex < selectedPlayGroups.length - 1 ? <div aria-hidden="true" className="mx-2 mt-2 border-t border-zinc-200" /> : null}
                     </li>
@@ -194,7 +215,7 @@ export function ListeningCalendar({ plays }: { plays: CalendarPlay[] }) {
                 <span aria-hidden="true" className={`pointer-events-none absolute inset-x-0 top-0 h-3 bg-gradient-to-b from-white to-transparent transition-opacity ${scrollFades.top ? "opacity-100" : "opacity-0"}`} />
                 <span aria-hidden="true" className={`pointer-events-none absolute inset-x-0 bottom-0 h-3 bg-gradient-to-t from-white to-transparent transition-opacity ${scrollFades.bottom ? "opacity-100" : "opacity-0"}`} />
               </div>
-            ) : <p className="mt-8 text-sm leading-6 text-white/35">No plays have been collected for this day yet.</p>}
+            ) : <p className="sidebar-waterfall-enter mt-8 text-sm leading-6 text-white/35" style={{ animationDelay: "50ms" }}>No plays have been collected for this day yet.</p>}
           </div>
         </aside>
       </div>
